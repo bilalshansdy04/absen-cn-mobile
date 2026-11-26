@@ -5,7 +5,7 @@ class ApiConfig {
   static const _baseUrlKey = 'api_base_url';
   static const String _defaultBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:3000',
+    defaultValue: 'https://absen-cn-web-admin.vercel.app',
   );
 
   static String? baseUrlOverride;
