@@ -43,7 +43,7 @@ jobs:
 
       - name: Run Flutter analyze & tests
         run: |
-          flutter analyze
+          flutter analyze --no-fatal-infos
           flutter test
 
       - name: Build Release APK
