@@ -1,0 +1,71 @@
+name: Release Mobile APK
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag (contoh: v1.0.0)"
+        required: true
+        default: "v1.0.0"
+      api_base_url:
+        description: "API Base URL production (opsional, fallback ke repo variable API_BASE_URL)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run Flutter analyze & tests
+        run: |
+          flutter analyze
+          flutter test
+
+      - name: Build Release APK
+        env:
+          API_URL: ${{ inputs.api_base_url || vars.API_BASE_URL }}
+        run: |
+          if [ -n "$API_URL" ]; then
+            flutter build apk --release --dart-define=API_BASE_URL="$API_URL"
+          else
+            flutter build apk --release
+          fi
+
+      - name: Prepare APK artifact
+        run: |
+          TAG="${{ inputs.tag_name || github.ref_name }}"
+          cp build/app/outputs/flutter-apk/app-release.apk "presensi-mobile-${TAG}.apk"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag_name || github.ref_name }}
+          name: "Release ${{ inputs.tag_name || github.ref_name }}"
+          generate_release_notes: true
+          files: |
+            presensi-mobile-*.apk
