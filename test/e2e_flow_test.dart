@@ -34,6 +34,7 @@ void main() {
                 'employee_code': 'MBR-014',
                 'full_name': 'Budi Santoso',
                 'role_code': 'fld_member',
+                'role_label': 'Operasional / Checker',
                 'is_first_login': true,
               },
             }),
@@ -68,7 +69,6 @@ void main() {
       await tester.tap(find.text('Masuk'));
       await tester.pumpAndSettle();
 
-      // Harus masuk ke layar Buat Kata Sandi Baru
       expect(find.text('Buat Kata Sandi Baru'), findsOneWidget);
 
       await tester.enterText(find.byType(TextField).at(0), 'Rahasia123');
@@ -79,15 +79,14 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pump(const Duration(milliseconds: 500));
 
-      // Harus masuk ke HomeScreen dan menampilkan tombol Check-In Sekarang
       expect(find.text('Budi Santoso'), findsOneWidget);
       expect(find.text('Check-In Sekarang'), findsOneWidget);
-      expect(find.text('Total Hari Masuk'), findsOneWidget);
+      expect(find.text('Beranda'), findsOneWidget);
     },
   );
 
   testWidgets(
-    'E2E: HomeScreen COMPLETED + Ringkasan 30 Hari + Pilihan Foto In/Out',
+    'E2E: Animated BottomNav (Beranda -> Riwayat -> Foto In/Out -> Profil)',
     (WidgetTester tester) async {
       ApiService.inMemoryTokenOverride = 'jwt-mock-token';
       ApiService.httpClient = MockClient((req) async {
@@ -133,6 +132,7 @@ void main() {
               'id': 'u-1',
               'employee_code': 'MBR-014',
               'full_name': 'Budi Santoso',
+              'role_label': 'Operasional / Checker',
             },
           ),
         ),
@@ -142,11 +142,15 @@ void main() {
 
       expect(find.text('Presensi Hari Ini Selesai'), findsOneWidget);
       expect(find.text('Durasi Kerja: 9 jam 0 menit'), findsOneWidget);
+
+      // Pindah ke tab Riwayat
+      await tester.tap(find.byIcon(Icons.history_rounded));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
       expect(find.text('1 Hari (1 Selesai)'), findsOneWidget);
       expect(find.text('9 jam 0 mnt'), findsOneWidget);
-      expect(find.text('Ketuk untuk lihat foto In / Out'), findsOneWidget);
 
-      // Ketuk item riwayat untuk membuka pilihan foto In / Out
       final photoHint = find.text('Ketuk untuk lihat foto In / Out');
       await tester.ensureVisible(photoHint);
       await tester.pump();
@@ -156,6 +160,19 @@ void main() {
 
       expect(find.text('Lihat Foto Check-In (In)'), findsOneWidget);
       expect(find.text('Lihat Foto Check-Out (Out)'), findsOneWidget);
+
+      // Tutup bottom sheet
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Pindah ke tab Profil
+      await tester.tap(find.byIcon(Icons.person_rounded));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('Ubah Kata Sandi'), findsOneWidget);
+      expect(find.text('Keluar dari Akun'), findsOneWidget);
     },
   );
 }
