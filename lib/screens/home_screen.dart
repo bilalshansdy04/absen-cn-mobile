@@ -17,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  int _currentIndex = 0;
   bool _loading = true;
   String? _error;
 
@@ -120,7 +121,8 @@ class _HomeScreenState extends State<HomeScreen> {
         if (outIso != null) {
           completedDays++;
           try {
-            final diff = DateTime.parse(outIso).difference(DateTime.parse(inIso));
+            final diff =
+                DateTime.parse(outIso).difference(DateTime.parse(inIso));
             if (!diff.isNegative) {
               totalDuration += diff;
             }
@@ -157,7 +159,9 @@ class _HomeScreenState extends State<HomeScreen> {
         (outFileId == null || outFileId.isEmpty)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tidak ada bukti foto untuk tanggal ini.')),
+        const SnackBar(
+          content: Text('Tidak ada bukti foto untuk tanggal ini.'),
+        ),
       );
       return;
     }
@@ -346,9 +350,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final fullName = widget.user['full_name']?.toString() ?? 'Anggota';
     final empCode = widget.user['employee_code']?.toString() ?? '';
 
-    final dateText = DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(_nowServer);
-    final timeText = DateFormat('HH:mm:ss').format(_nowServer);
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -377,81 +378,341 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: 'Muat ulang',
             onPressed: _fetchStatus,
           ),
-          PopupMenuButton<String>(
-            onSelected: (val) async {
-              if (val == 'password') {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ChangePasswordScreen(
-                      user: widget.user,
-                      isForced: false,
-                    ),
-                  ),
-                );
-              } else if (val == 'logout') {
-                await ApiService.clearToken();
-                if (!context.mounted) return;
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                );
-              }
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(
-                value: 'password',
-                child: Text('Ubah Kata Sandi'),
-              ),
-              PopupMenuItem(
-                value: 'logout',
-                child: Text('Keluar'),
-              ),
-            ],
-          ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _fetchStatus,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 260),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, anim) {
+          final slide = Tween<Offset>(
+            begin: const Offset(0, 0.03),
+            end: Offset.zero,
+          ).animate(anim);
+          return FadeTransition(
+            opacity: anim,
+            child: SlideTransition(position: slide, child: child),
+          );
+        },
+        child: _buildActiveTab(),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F172A),
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x280F172A),
+                  blurRadius: 18,
+                  offset: Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(
+                  index: 0,
+                  icon: Icons.home_rounded,
+                  label: 'Beranda',
+                ),
+                _buildNavItem(
+                  index: 1,
+                  icon: Icons.history_rounded,
+                  label: 'Riwayat',
+                ),
+                _buildNavItem(
+                  index: 2,
+                  icon: Icons.person_rounded,
+                  label: 'Profil',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem({
+    required int index,
+    required IconData icon,
+    required String label,
+  }) {
+    final isSelected = _currentIndex == index;
+    return GestureDetector(
+      onTap: () => setState(() => _currentIndex = index),
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 18 : 14,
+          vertical: 10,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF059669) : Colors.transparent,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Server Clock Card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0F172A),
-                borderRadius: BorderRadius.circular(18),
+            AnimatedScale(
+              scale: isSelected ? 1.1 : 1.0,
+              duration: const Duration(milliseconds: 200),
+              child: Icon(
+                icon,
+                size: 20,
+                color: isSelected ? Colors.white : const Color(0xFF94A3B8),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    dateText,
-                    style: const TextStyle(
-                      color: Color(0xFF94A3B8),
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        timeText,
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              child: isSelected
+                  ? Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Text(
+                        label,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 34,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveTab() {
+    switch (_currentIndex) {
+      case 0:
+        return _buildHomeTab();
+      case 1:
+        return _buildHistoryTab();
+      case 2:
+      default:
+        return _buildProfileTab();
+    }
+  }
+
+  Widget _buildHomeTab() {
+    final dateText = DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(_nowServer);
+    final timeText = DateFormat('HH:mm:ss').format(_nowServer);
+    final summary = _computeWorkSummary();
+
+    return RefreshIndicator(
+      key: const ValueKey('tab-home'),
+      onRefresh: _fetchStatus,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F172A),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  dateText,
+                  style: const TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      timeText,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 34,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'WIB (Server)',
+                      style: TextStyle(
+                        color: Color(0xFF34D399),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (_error != null)
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFECACA)),
+              ),
+              child: Text(
+                _error!,
+                style: const TextStyle(color: Color(0xFFB91C1C)),
+              ),
+            ),
+          Card(
+            elevation: 0,
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+              side: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: _loading
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: CircularProgressIndicator(),
+                      ),
+                    )
+                  : _buildActionCardContent(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (!_loading)
+            InkWell(
+              onTap: () => setState(() => _currentIndex = 1),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFECFDF5),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFA7F3D0)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Ringkasan 30 Hari Terakhir',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF047857),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${summary['totalDays']} Hari Masuk • ${summary['totalHours']} jam ${summary['totalMinutes']} mnt',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF065F46),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 16,
+                      color: Color(0xFF047857),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistoryTab() {
+    final summary = _computeWorkSummary();
+
+    return RefreshIndicator(
+      key: const ValueKey('tab-history'),
+      onRefresh: _fetchStatus,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Text(
+            'Bukti & Riwayat Kerja (30 Hari Terakhir)',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (!_loading)
+            Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFECFDF5),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFA7F3D0)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Total Hari Masuk',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF047857),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${summary['totalDays']} Hari (${summary['completedDays']} Selesai)',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF065F46),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
                       const Text(
-                        'WIB (Server)',
+                        'Akumulasi Jam',
                         style: TextStyle(
-                          color: Color(0xFF34D399),
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF047857),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${summary['totalHours']} jam ${summary['totalMinutes']} mnt',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF065F46),
                         ),
                       ),
                     ],
@@ -459,257 +720,260 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-
-            if (_error != null)
-              Container(
-                padding: const EdgeInsets.all(12),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF2F2),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFFECACA)),
-                ),
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 40),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_history.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 40),
+              child: Center(
                 child: Text(
-                  _error!,
-                  style: const TextStyle(color: Color(0xFFB91C1C)),
+                  'Belum ada riwayat presensi.',
+                  style: TextStyle(color: Color(0xFF64748B)),
                 ),
               ),
+            )
+          else
+            ..._history.map((item) {
+              final inIso = item['check_in_at']?.toString();
+              final outIso = item['check_out_at']?.toString();
+              final inAddr = item['check_in_address']?.toString();
+              final outAddr = item['check_out_address']?.toString();
+              final hasPhoto = (item['check_in_tg_file_id'] != null) ||
+                  (item['check_out_tg_file_id'] != null);
+              final isCompleted = outIso != null;
 
-            // Single-Action Card
-            Card(
-              elevation: 0,
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-                side: const BorderSide(color: Color(0xFFE2E8F0)),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: _loading
-                    ? const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(20),
-                          child: CircularProgressIndicator(),
-                        ),
-                      )
-                    : _buildActionCardContent(),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-            const Text(
-              'Bukti & Riwayat Kerja (30 Hari Terakhir)',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0F172A),
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            if (!_loading) ...[
-              Builder(
-                builder: (_) {
-                  final summary = _computeWorkSummary();
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFECFDF5),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFA7F3D0)),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Total Hari Masuk',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF047857),
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${summary['totalDays']} Hari (${summary['completedDays']} Selesai)',
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF065F46),
-                                ),
-                              ),
-                            ],
+              return InkWell(
+                onTap: hasPhoto ? () => _showPhotoChoiceSheet(item) : null,
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            item['attendance_date']?.toString() ?? '-',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0F172A),
+                            ),
                           ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            const Text(
-                              'Akumulasi Jam',
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isCompleted
+                                  ? const Color(0xFFE0F2FE)
+                                  : const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              isCompleted
+                                  ? 'Selesai • ${_computeDuration(inIso, outIso)}'
+                                  : 'Belum Check-Out',
                               style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF047857),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: isCompleted
+                                    ? const Color(0xFF0369A1)
+                                    : const Color(0xFFB45309),
                               ),
                             ),
-                            const SizedBox(height: 2),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Masuk: ${_extractWibTime(inIso)}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF059669),
+                        ),
+                      ),
+                      if (inAddr != null && inAddr.isNotEmpty)
+                        Text(
+                          inAddr,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF64748B),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Pulang: ${_extractWibTime(outIso)}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFEA580C),
+                        ),
+                      ),
+                      if (outAddr != null && outAddr.isNotEmpty)
+                        Text(
+                          outAddr,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF64748B),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      if (hasPhoto) ...[
+                        const SizedBox(height: 8),
+                        const Row(
+                          children: [
+                            Icon(
+                              Icons.photo_library_outlined,
+                              size: 14,
+                              color: Color(0xFF0284C7),
+                            ),
+                            SizedBox(width: 4),
                             Text(
-                              '${summary['totalHours']} jam ${summary['totalMinutes']} mnt',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF065F46),
+                              'Ketuk untuk lihat foto In / Out',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0284C7),
                               ),
                             ),
                           ],
                         ),
                       ],
+                    ],
+                  ),
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileTab() {
+    final fullName = widget.user['full_name']?.toString() ?? 'Anggota';
+    final empCode = widget.user['employee_code']?.toString() ?? '-';
+    final roleLabel = widget.user['role_label']?.toString() ?? 'Operasional';
+
+    return ListView(
+      key: const ValueKey('tab-profile'),
+      padding: const EdgeInsets.all(16),
+      children: [
+        Card(
+          elevation: 0,
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 34,
+                  backgroundColor: const Color(0xFFECFDF5),
+                  child: Text(
+                    fullName.isNotEmpty ? fullName[0].toUpperCase() : 'A',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF059669),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  fullName,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$empCode • $roleLabel',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          elevation: 0,
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(
+                  Icons.lock_reset_rounded,
+                  color: Color(0xFF059669),
+                ),
+                title: const Text(
+                  'Ubah Kata Sandi',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ChangePasswordScreen(
+                        user: widget.user,
+                        isForced: false,
+                      ),
                     ),
                   );
                 },
               ),
-            ],
-
-            if (_history.isEmpty && !_loading)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(
-                  child: Text(
-                    'Belum ada riwayat presensi.',
-                    style: TextStyle(color: Color(0xFF64748B)),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(
+                  Icons.logout_rounded,
+                  color: Color(0xFFDC2626),
+                ),
+                title: const Text(
+                  'Keluar dari Akun',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: Color(0xFFDC2626),
                   ),
                 ),
-              )
-            else
-              ..._history.map((item) {
-                final inIso = item['check_in_at']?.toString();
-                final outIso = item['check_out_at']?.toString();
-                final inAddr = item['check_in_address']?.toString();
-                final outAddr = item['check_out_address']?.toString();
-                final hasPhoto = (item['check_in_tg_file_id'] != null) ||
-                    (item['check_out_tg_file_id'] != null);
-                final isCompleted = outIso != null;
-
-                return InkWell(
-                  onTap: hasPhoto ? () => _showPhotoChoiceSheet(item) : null,
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              item['attendance_date']?.toString() ?? '-',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF0F172A),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isCompleted
-                                    ? const Color(0xFFE0F2FE)
-                                    : const Color(0xFFFEF3C7),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                isCompleted
-                                    ? 'Selesai • ${_computeDuration(inIso, outIso)}'
-                                    : 'Belum Check-Out',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: isCompleted
-                                      ? const Color(0xFF0369A1)
-                                      : const Color(0xFFB45309),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Masuk: ${_extractWibTime(inIso)}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF059669),
-                          ),
-                        ),
-                        if (inAddr != null && inAddr.isNotEmpty)
-                          Text(
-                            inAddr,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFF64748B),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Pulang: ${_extractWibTime(outIso)}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFFEA580C),
-                          ),
-                        ),
-                        if (outAddr != null && outAddr.isNotEmpty)
-                          Text(
-                            outAddr,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFF64748B),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        if (hasPhoto) ...[
-                          const SizedBox(height: 8),
-                          const Row(
-                            children: [
-                              Icon(
-                                Icons.photo_library_outlined,
-                                size: 14,
-                                color: Color(0xFF0284C7),
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'Ketuk untuk lihat foto In / Out',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF0284C7),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                );
-              }),
-          ],
+                onTap: () async {
+                  await ApiService.clearToken();
+                  if (!mounted) return;
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -784,7 +1048,6 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // COMPLETED
     final inIso = _todayLog?['check_in_at']?.toString();
     final outIso = _todayLog?['check_out_at']?.toString();
     return Column(
