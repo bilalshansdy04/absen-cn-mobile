@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../config/api_config.dart';
 import '../services/api_service.dart';
 import 'change_password_screen.dart';
 import 'home_screen.dart';
@@ -23,38 +22,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _codeCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
-  }
-
-  Future<void> _openServerSettings() async {
-    final current = await ApiConfig.getBaseUrl();
-    if (!mounted) return;
-    final ctrl = TextEditingController(text: current);
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Alamat Server API'),
-        content: TextField(
-          controller: ctrl,
-          decoration: const InputDecoration(
-            labelText: 'Base URL',
-            hintText: 'https://domain-anda.vercel.app',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              await ApiConfig.setBaseUrl(ctrl.text);
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _login() async {
@@ -101,18 +68,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, color: Color(0xFF475569)),
-            tooltip: 'Pengaturan Server API',
-            onPressed: _openServerSettings,
-          ),
-        ],
-      ),
-      body: Center(
+      body: SafeArea(
+        child: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
@@ -234,6 +191,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }
